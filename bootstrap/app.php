@@ -44,7 +44,17 @@ return Application::configure(basePath: dirname(__DIR__))
 
     // ⚠️ هندل خطاها
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // 🔹 هندل کردن خطاهای API به صورت JSON
+        $exceptions->render(function (Throwable $e, $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+
+            // در غیر این صورت، هندلر پیش‌فرض لاراول
+            return null;
+        });
     })
 
     ->create();
