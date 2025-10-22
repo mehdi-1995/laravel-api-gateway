@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\GatewayController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::any('/gateway/{path}', [GatewayController::class, 'proxy'])->where('path', '.*');
