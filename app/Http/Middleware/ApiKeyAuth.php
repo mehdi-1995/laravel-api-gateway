@@ -15,7 +15,7 @@ class ApiKeyAuth
      */
     public function handle(Request $request, Closure $next)
     {
-        $apiKey = $request->header('X-API-KEY');
+        $apiKey = $request->header('X-API-KEY') ?? $request->header('API_KEY');
         if ($apiKey !== 'base64:FDiTrLSYPbNkEHKvbhqeGqv7WK0jq6DgHOy7zUhECoI=') { // در تولید، این رو از env بگیرید
             return response()->json(['error' => 'Unauthorized'], 401);
         }
