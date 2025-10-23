@@ -32,16 +32,47 @@ class GatewayController extends Controller
 
         // Forward به backend (Proxying)
         $backendUrl = "https://jsonplaceholder.typicode.com/{$path}";
-        $response = Http::withHeaders($cleanHeaders)
-            ->withBody($request->getContent(), $request->header('Content-Type'))
-            ->$method($backendUrl, $request->all());
+        $client = Http::withHeaders($cleanHeaders)
+            ->withoutVerifying(); // موقتاً برای تست local
 
-        // Transformation روی response: مثلاً اضافه کردن field
-        $body = $response->json();
-        if (is_array($body)) {
-            $body['gateway_note'] = 'Processed by Laravel Gateway';
+        if (in_array($method, ['post', 'put', 'patch'])) {
+            $client = $client->withBody(
+                $request->getContent(),
+                $request->header('Content-Type', 'application/json')
+            );
         }
 
-        return response()->json($body, $response->status());
+        try {
+            $response = $client->$method($backendUrl, $request->query());
+
+            Log::info('Backend response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            if ($response->failed()) {
+                Log::error('Backend request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return response()->json([
+                    'error' => 'Backend request failed',
+                    'status' => $response->status(),
+                ], $response->status());
+            }
+
+            $body = $response->json();
+            if (is_array($body)) {
+                $body['gateway_note'] = 'Processed by Laravel Gateway';
+            } else {
+                $body = ['gateway_note' => 'Processed by Laravel Gateway', 'data' => $body];
+            }
+
+            return response()->json($body, $response->status());
+        } catch (\Throwable $e) {
+            Log::error('Gateway error', ['message' => $e->getMessage()]);
+            return response()->json(['error' => 'Gateway Exception: ' . $e->getMessage()], 500);
+        }
     }
 }
